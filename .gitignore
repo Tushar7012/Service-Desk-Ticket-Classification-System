@@ -1,0 +1,66 @@
+# Byte-compiled
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Type checking
+.mypy_cache/
+
+# Logs
+logs/
+*.log
+
+# Model artifacts
+models/*.pt
+models/*.onnx
+!models/.gitkeep
+
+# Data
+data/*.csv
+data/*.json
+!data/.gitkeep
+
+# Outputs
+outputs/
+*.pdf
+reports/
+
+# Environment
+.env
+.env.local
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Weights & Biases
+wandb/
+
+# Temporary
+tmp/
+temp/
