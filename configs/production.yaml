@@ -1,0 +1,56 @@
+# Production Configuration
+# Optimized settings for inference
+
+model:
+  path: "models/production/model.pt"
+  name: "distilbert-base-uncased"
+  num_classes: 12
+  max_length: 256
+
+inference:
+  batch_size: 32
+  device: "cuda"  # or "cpu"
+  use_fp16: true  # Half precision for faster inference
+  confidence_threshold: 0.7  # Below this, flag for human review
+
+class_names:
+  - "General Inquiry"
+  - "Hardware"
+  - "Software"
+  - "Network"
+  - "Access Management"
+  - "Email"
+  - "Database"
+  - "Security"
+  - "Storage"
+  - "Backup"
+  - "Printing"
+  - "Other"
+
+# Critical categories require higher recall
+critical_categories:
+  - "Security"
+  - "Database"
+
+# Per-category confidence thresholds
+category_thresholds:
+  Security: 0.5      # Lower threshold = higher recall for security
+  Database: 0.6
+  default: 0.7
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  timeout: 30
+
+monitoring:
+  enable_prometheus: true
+  metrics_port: 9090
+  drift_check_interval: 3600  # seconds
+  psi_threshold: 0.2
+  low_confidence_alert_rate: 0.15
+
+logging:
+  level: "INFO"
+  format: "json"

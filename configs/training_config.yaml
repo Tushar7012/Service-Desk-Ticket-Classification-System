@@ -1,0 +1,66 @@
+# Training Configuration
+# Production-grade settings for ticket classification
+
+model:
+  name: "distilbert-base-uncased"
+  num_classes: 12
+  dropout: 0.3
+  freeze_bert_layers: 2  # Freeze first N transformer layers for faster training
+
+training:
+  max_epochs: 20
+  batch_size: 32
+  learning_rate: 2.0e-5
+  weight_decay: 0.01
+  patience: 5  # Early stopping patience
+  gradient_accumulation_steps: 2
+  max_grad_norm: 1.0
+  warmup_ratio: 0.1
+
+data:
+  max_length: 256
+  train_path: "data/train.csv"
+  val_path: "data/val.csv"
+  test_path: "data/test.csv"
+
+# Class weights for imbalanced data (inverse frequency)
+# Categories: General Inquiry, Hardware, Software, Network, Access Management, 
+#             Email, Database, Security, Storage, Backup, Printing, Other
+class_weights:
+  - 0.5   # General Inquiry (high frequency)
+  - 0.8   # Hardware
+  - 1.0   # Software
+  - 1.0   # Network
+  - 1.5   # Access Management
+  - 2.0   # Email
+  - 2.5   # Database
+  - 5.0   # Security (critical, low frequency)
+  - 3.0   # Storage
+  - 4.0   # Backup
+  - 3.5   # Printing
+  - 2.0   # Other
+
+class_names:
+  - "General Inquiry"
+  - "Hardware"
+  - "Software"
+  - "Network"
+  - "Access Management"
+  - "Email"
+  - "Database"
+  - "Security"
+  - "Storage"
+  - "Backup"
+  - "Printing"
+  - "Other"
+
+logging:
+  project_name: "ticket-classifier"
+  experiment_name: "distilbert-focal-loss"
+  log_every_n_steps: 50
+
+checkpointing:
+  save_dir: "models/checkpoints"
+  save_top_k: 3
+  monitor: "val_f1_macro"
+  mode: "max"
