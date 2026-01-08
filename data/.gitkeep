@@ -1,0 +1,6 @@
+# Placeholder for data files
+# Expected files:
+# - train.csv
+# - val.csv  
+# - test.csv
+# Required columns: subject, description, category
