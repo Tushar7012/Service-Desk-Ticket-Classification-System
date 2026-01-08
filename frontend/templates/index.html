@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Classifier AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #00ff88;
+            --primary-dim: #00cc6a;
+            --bg-dark: #0a0a0a;
+            --bg-card: rgba(10, 25, 15, 0.85);
+            --text: #ffffff;
+            --text-dim: #8a9a8f;
+            --border: rgba(0, 255, 136, 0.2);
+            --glow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background with Green Diagonal Lines */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .line {
+            position: absolute;
+            background: linear-gradient(135deg, transparent, rgba(0, 255, 136, 0.4), transparent);
+            transform: rotate(-45deg);
+            animation: lineMove 8s linear infinite;
+        }
+
+        .line1 {
+            width: 2px;
+            height: 200%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .line2 {
+            width: 3px;
+            height: 200%;
+            left: 25%;
+            animation-delay: -2s;
+            opacity: 0.7;
+        }
+
+        .line3 {
+            width: 1px;
+            height: 200%;
+            left: 40%;
+            animation-delay: -4s;
+        }
+
+        .line4 {
+            width: 2px;
+            height: 200%;
+            left: 60%;
+            animation-delay: -1s;
+            opacity: 0.5;
+        }
+
+        .line5 {
+            width: 4px;
+            height: 200%;
+            left: 75%;
+            animation-delay: -3s;
+            opacity: 0.8;
+        }
+
+        .line6 {
+            width: 2px;
+            height: 200%;
+            left: 90%;
+            animation-delay: -5s;
+            opacity: 0.6;
+        }
+
+        @keyframes lineMove {
+            0% {
+                transform: translateY(-50%) rotate(-45deg);
+            }
+
+            100% {
+                transform: translateY(50%) rotate(-45deg);
+            }
+        }
+
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0, 255, 136, 0.3), transparent 70%);
+            filter: blur(60px);
+            animation: orbFloat 15s ease-in-out infinite;
+        }
+
+        .orb1 {
+            width: 400px;
+            height: 400px;
+            top: -100px;
+            left: -100px;
+        }
+
+        .orb2 {
+            width: 300px;
+            height: 300px;
+            bottom: -50px;
+            right: -50px;
+            animation-delay: -7s;
+        }
+
+        @keyframes orbFloat {
+
+            0%,
+            100% {
+                transform: translate(0, 0);
+            }
+
+            50% {
+                transform: translate(50px, 30px);
+            }
+        }
+
+        /* Container */
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 2rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            backdrop-filter: blur(20px);
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dim));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--glow);
+        }
+
+        .logo-icon svg {
+            width: 28px;
+            height: 28px;
+            color: var(--bg-dark);
+        }
+
+        .logo-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: 2px;
+        }
+
+        .logo-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            display: block;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4);
+            }
+
+            50% {
+                opacity: 0.7;
+                box-shadow: 0 0 0 8px transparent;
+            }
+        }
+
+        .status-text {
+            font-size: 0.85rem;
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        /* Main Content */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Glass Card */
+        .glass-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(20px);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(0, 255, 136, 0.4);
+            box-shadow: var(--glow);
+        }
+
+        .section-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .icon {
+            font-size: 1.2rem;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-dim);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            resize: none;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.1);
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: var(--text-dim);
+            opacity: 0.6;
+        }
+
+        /* Button */
+        .submit-btn {
+            width: 100%;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dim));
+            border: none;
+            border-radius: 12px;
+            color: var(--bg-dark);
+            font-family: 'Orbitron', monospace;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-icon {
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+        }
+
+        .submit-btn:hover .btn-icon {
+            transform: translateX(5px);
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--bg-dark);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Results */
+        .results-placeholder {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-dim);
+        }
+
+        .placeholder-icon svg {
+            width: 60px;
+            height: 60px;
+            stroke: var(--border);
+            margin-bottom: 1rem;
+        }
+
+        .primary-result {
+            text-align: center;
+            padding: 1.5rem;
+            background: rgba(0, 255, 136, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            margin-bottom: 1.5rem;
+        }
+
+        .result-label {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin-bottom: 0.5rem;
+        }
+
+        .result-category {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-dim), var(--primary));
+            border-radius: 4px;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px var(--primary);
+        }
+
+        .confidence-text {
+            font-size: 0.9rem;
+            color: var(--text);
+        }
+
+        .confidence-text span {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .alternative-results {
+            margin-bottom: 1.5rem;
+        }
+
+        .alternative-results h4 {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin-bottom: 0.75rem;
+        }
+
+        .alt-result {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+
+        .alt-category {
+            color: var(--text);
+        }
+
+        .alt-confidence {
+            color: var(--primary-dim);
+            font-weight: 500;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .status-badge.success {
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--primary);
+            border: 1px solid var(--border);
+        }
+
+        .status-badge.review {
+            background: rgba(255, 170, 0, 0.15);
+            color: #ffaa00;
+            border: 1px solid rgba(255, 170, 0, 0.3);
+        }
+
+        /* Categories Grid */
+        .categories-section {
+            margin-bottom: 2rem;
+        }
+
+        .categories-section .section-title {
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+        }
+
+        .category-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .category-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+        }
+
+        .cat-icon {
+            font-size: 1.5rem;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .cat-name {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="line line1"></div>
+        <div class="line line2"></div>
+        <div class="line line3"></div>
+        <div class="line line4"></div>
+        <div class="line line5"></div>
+        <div class="line line6"></div>
+        <div class="glow-orb orb1"></div>
+        <div class="glow-orb orb2"></div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                        <path d="M2 17l10 5 10-5" />
+                        <path d="M2 12l10 5 10-5" />
+                    </svg>
+                </div>
+                <div>
+                    <span class="logo-title">TICKET CLASSIFIER</span>
+                    <span class="logo-subtitle">AI-Powered Routing System</span>
+                </div>
+            </div>
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span class="status-text">Model Ready</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Input Section -->
+            <section class="glass-card">
+                <h2 class="section-title">
+                    <span class="icon">📝</span>
+                    Submit Ticket
+                </h2>
+
+                <form id="ticketForm">
+                    <div class="form-group">
+                        <label for="subject">Subject</label>
+                        <input type="text" id="subject" placeholder="Brief description of the issue..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" rows="5"
+                            placeholder="Provide detailed information about your issue..." required></textarea>
+                    </div>
+
+                    <button type="submit" class="submit-btn" id="submitBtn">
+                        <span class="btn-text">Classify Ticket</span>
+                        <span class="btn-icon">→</span>
+                        <div class="spinner" id="spinner"></div>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Results Section -->
+            <section class="glass-card">
+                <h2 class="section-title">
+                    <span class="icon">🎯</span>
+                    Classification Results
+                </h2>
+
+                <div class="results-placeholder" id="placeholder">
+                    <div class="placeholder-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M12 6v6l4 2" />
+                        </svg>
+                    </div>
+                    <p>Submit a ticket to see AI predictions</p>
+                </div>
+
+                <div id="resultsContent" style="display: none;">
+                    <div class="primary-result">
+                        <div class="result-label">Predicted Category</div>
+                        <div class="result-category" id="primaryCategory">-</div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" id="primaryConfidence" style="width: 0%"></div>
+                        </div>
+                        <div class="confidence-text">
+                            <span id="primaryConfidenceText">0%</span> confidence
+                        </div>
+                    </div>
+
+                    <div class="alternative-results">
+                        <h4>Alternative Classifications</h4>
+                        <div class="alt-result">
+                            <span class="alt-category" id="alt1Cat">-</span>
+                            <span class="alt-confidence" id="alt1Conf">0%</span>
+                        </div>
+                        <div class="alt-result">
+                            <span class="alt-category" id="alt2Cat">-</span>
+                            <span class="alt-confidence" id="alt2Conf">0%</span>
+                        </div>
+                    </div>
+
+                    <div class="status-badge success" id="statusBadge">
+                        <span>✓</span>
+                        <span id="badgeText">Auto-Routed</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Categories -->
+        <section class="categories-section">
+            <h2 class="section-title">
+                <span class="icon">📊</span>
+                Supported Categories
+            </h2>
+            <div class="categories-grid">
+                <div class="category-card"><span class="cat-icon">💻</span><span class="cat-name">Hardware</span></div>
+                <div class="category-card"><span class="cat-icon">📦</span><span class="cat-name">Software</span></div>
+                <div class="category-card"><span class="cat-icon">🌐</span><span class="cat-name">Network</span></div>
+                <div class="category-card"><span class="cat-icon">🔐</span><span class="cat-name">Security</span></div>
+                <div class="category-card"><span class="cat-icon">🔑</span><span class="cat-name">Access</span></div>
+                <div class="category-card"><span class="cat-icon">📧</span><span class="cat-name">Email</span></div>
+                <div class="category-card"><span class="cat-icon">🗄️</span><span class="cat-name">Database</span></div>
+                <div class="category-card"><span class="cat-icon">💾</span><span class="cat-name">Storage</span></div>
+                <div class="category-card"><span class="cat-icon">🖨️</span><span class="cat-name">Printing</span></div>
+                <div class="category-card"><span class="cat-icon">📀</span><span class="cat-name">Backup</span></div>
+                <div class="category-card"><span class="cat-icon">❓</span><span class="cat-name">Inquiry</span></div>
+                <div class="category-card"><span class="cat-icon">📋</span><span class="cat-name">Other</span></div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Powered by DistilBERT + Focal Loss | Google & Amazon ML Best Practices</p>
+        </footer>
+    </div>
+
+    <script>
+        const form = document.getElementById('ticketForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const spinner = document.getElementById('spinner');
+        const btnText = document.querySelector('.btn-text');
+        const btnIcon = document.querySelector('.btn-icon');
+        const placeholder = document.getElementById('placeholder');
+        const resultsContent = document.getElementById('resultsContent');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const subject = document.getElementById('subject').value;
+            const description = document.getElementById('description').value;
+
+            // Show loading
+            submitBtn.disabled = true;
+            btnText.textContent = 'Classifying...';
+            btnIcon.style.display = 'none';
+            spinner.style.display = 'block';
+
+            try {
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subject, description })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Hide placeholder, show results
+                    placeholder.style.display = 'none';
+                    resultsContent.style.display = 'block';
+
+                    // Primary result
+                    document.getElementById('primaryCategory').textContent = data.primary.category;
+                    document.getElementById('primaryConfidence').style.width = data.primary.confidence + '%';
+                    document.getElementById('primaryConfidenceText').textContent = data.primary.confidence.toFixed(1) + '%';
+
+                    // Alternatives
+                    document.getElementById('alt1Cat').textContent = data.alternatives[0].category;
+                    document.getElementById('alt1Conf').textContent = data.alternatives[0].confidence.toFixed(1) + '%';
+                    document.getElementById('alt2Cat').textContent = data.alternatives[1].category;
+                    document.getElementById('alt2Conf').textContent = data.alternatives[1].confidence.toFixed(1) + '%';
+
+                    // Status badge
+                    const badge = document.getElementById('statusBadge');
+                    const badgeText = document.getElementById('badgeText');
+                    if (data.requires_review) {
+                        badge.className = 'status-badge review';
+                        badgeText.textContent = 'Needs Human Review';
+                    } else {
+                        badge.className = 'status-badge success';
+                        badgeText.textContent = 'Auto-Routed';
+                    }
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Failed to classify ticket. Please try again.');
+                console.error(error);
+            } finally {
+                // Reset button
+                submitBtn.disabled = false;
+                btnText.textContent = 'Classify Ticket';
+                btnIcon.style.display = 'inline';
+                spinner.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+
+</html>
