@@ -12,7 +12,7 @@ app = Flask(__name__, static_folder='static', template_folder='templates')
 CORS(app)
 
 # Configuration
-HF_REPO_ID = os.environ.get('HF_REPO_ID', 'Tushar7012/ticket-classifier')
+HF_REPO_ID = os.environ.get('HF_REPO_ID', 'TuShar2309/ticket-classifier')
 MODEL_FILENAME = 'ticket_classifier.pt'
 
 # Try to load model, fallback to demo mode

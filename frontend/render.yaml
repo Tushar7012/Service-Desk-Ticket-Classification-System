@@ -6,6 +6,6 @@ services:
     startCommand: gunicorn app:app
     envVars:
       - key: HF_REPO_ID
-        value: Tushar7012/ticket-classifier
+        value: TuShar2309/ticket-classifier
       - key: PYTHON_VERSION
         value: 3.10.0
