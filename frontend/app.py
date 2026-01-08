@@ -1,6 +1,6 @@
 """
 Flask API for Ticket Classification - Production Ready for Render
-With fallback demo mode for local testing without model.
+Downloads model from Hugging Face Hub on startup.
 """
 
 from flask import Flask, request, jsonify, render_template
@@ -11,10 +11,16 @@ import random
 app = Flask(__name__, static_folder='static', template_folder='templates')
 CORS(app)
 
+# Configuration
+HF_REPO_ID = os.environ.get('HF_REPO_ID', 'Tushar7012/ticket-classifier')
+MODEL_FILENAME = 'ticket_classifier.pt'
+
 # Try to load model, fallback to demo mode
 MODEL_LOADED = False
 model = None
 tokenizer = None
+preprocessor = None
+device = "cpu"
 
 CLASS_NAMES = [
     "Access Management", "Backup", "Database", "Email", 
@@ -45,74 +51,105 @@ def demo_predict(text):
     
     for category, keywords in KEYWORDS.items():
         score = sum(1 for kw in keywords if kw in text_lower)
-        scores[category] = score + random.uniform(0, 0.5)  # Add some randomness
+        scores[category] = score + random.uniform(0, 0.5)
     
-    # Sort by score
     sorted_cats = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-    
-    # Normalize to percentages
     total = sum(s for _, s in sorted_cats[:3]) + 0.1
     return [
         {"category": cat, "confidence": (score / total) * 100}
         for cat, score in sorted_cats[:3]
     ]
 
-try:
-    import torch
-    import torch.nn as nn
-    from transformers import DistilBertModel, AutoTokenizer
-    import re
+
+def download_model_from_hf():
+    """Download model from Hugging Face Hub."""
+    try:
+        from huggingface_hub import hf_hub_download
+        print(f"Downloading model from Hugging Face: {HF_REPO_ID}")
+        model_path = hf_hub_download(
+            repo_id=HF_REPO_ID,
+            filename=MODEL_FILENAME,
+            cache_dir="./model_cache"
+        )
+        print(f"Model downloaded to: {model_path}")
+        return model_path
+    except Exception as e:
+        print(f"Failed to download from HF: {e}")
+        return None
+
+
+def load_model():
+    """Load model from local file or download from HF."""
+    global model, tokenizer, preprocessor, device, MODEL_LOADED
     
-    class TicketClassifier(nn.Module):
-        def __init__(self, num_classes, model_name="distilbert-base-uncased", dropout=0.3):
-            super().__init__()
-            self.bert = DistilBertModel.from_pretrained(model_name)
-            self.classifier = nn.Sequential(
-                nn.Dropout(dropout),
-                nn.Linear(768, 256),
-                nn.GELU(),
-                nn.Dropout(dropout),
-                nn.Linear(256, num_classes)
-            )
+    try:
+        import torch
+        import torch.nn as nn
+        from transformers import DistilBertModel, AutoTokenizer
+        import re
         
-        def forward(self, input_ids, attention_mask):
-            outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
-            return self.classifier(outputs.last_hidden_state[:, 0, :])
+        class TicketClassifier(nn.Module):
+            def __init__(self, num_classes, model_name="distilbert-base-uncased", dropout=0.3):
+                super().__init__()
+                self.bert = DistilBertModel.from_pretrained(model_name)
+                self.classifier = nn.Sequential(
+                    nn.Dropout(dropout),
+                    nn.Linear(768, 256),
+                    nn.GELU(),
+                    nn.Dropout(dropout),
+                    nn.Linear(256, num_classes)
+                )
+            
+            def forward(self, input_ids, attention_mask):
+                outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+                return self.classifier(outputs.last_hidden_state[:, 0, :])
+            
+            def predict_proba(self, input_ids, attention_mask):
+                logits = self.forward(input_ids, attention_mask)
+                return torch.softmax(logits, dim=-1)
         
-        def predict_proba(self, input_ids, attention_mask):
-            logits = self.forward(input_ids, attention_mask)
-            return torch.softmax(logits, dim=-1)
-    
-    class TicketPreprocessor:
-        def __init__(self):
-            self._email = re.compile(r'\b[\w.-]+@[\w.-]+\.\w+\b')
-        def clean(self, text):
-            return ' '.join(self._email.sub('[EMAIL]', str(text or '')).lower().split())
-        def combine(self, subj, desc):
-            return f"[SUBJECT] {self.clean(subj)} [SEP] [DESCRIPTION] {self.clean(desc)}"
-    
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    preprocessor = TicketPreprocessor()
-    
-    model_path = os.environ.get('MODEL_PATH', 'ticket_classifier.pt')
-    if os.path.exists(model_path):
-        tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-        model = TicketClassifier(num_classes=len(CLASS_NAMES))
-        checkpoint = torch.load(model_path, map_location=device)
-        if 'model_state_dict' in checkpoint:
-            model.load_state_dict(checkpoint['model_state_dict'])
+        class TicketPreprocessor:
+            def __init__(self):
+                self._email = re.compile(r'\b[\w.-]+@[\w.-]+\.\w+\b')
+            def clean(self, text):
+                return ' '.join(self._email.sub('[EMAIL]', str(text or '')).lower().split())
+            def combine(self, subj, desc):
+                return f"[SUBJECT] {self.clean(subj)} [SEP] [DESCRIPTION] {self.clean(desc)}"
+        
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        preprocessor = TicketPreprocessor()
+        
+        # Try local file first
+        model_path = os.environ.get('MODEL_PATH', 'ticket_classifier.pt')
+        
+        if not os.path.exists(model_path):
+            # Try to download from Hugging Face
+            model_path = download_model_from_hf()
+        
+        if model_path and os.path.exists(model_path):
+            tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+            model = TicketClassifier(num_classes=len(CLASS_NAMES))
+            
+            checkpoint = torch.load(model_path, map_location=device)
+            if 'model_state_dict' in checkpoint:
+                model.load_state_dict(checkpoint['model_state_dict'])
+            else:
+                model.load_state_dict(checkpoint)
+            
+            model.to(device)
+            model.eval()
+            MODEL_LOADED = True
+            print(f"Model loaded successfully from {model_path}")
         else:
-            model.load_state_dict(checkpoint)
-        model.to(device)
-        model.eval()
-        MODEL_LOADED = True
-        print(f"Model loaded from {model_path}")
-    else:
-        print(f"Model not found at {model_path}, using demo mode")
-        
-except Exception as e:
-    print(f"Could not load ML libraries: {e}")
-    print("Running in demo mode with keyword-based classification")
+            print("No model available, using demo mode")
+            
+    except Exception as e:
+        print(f"Could not load ML libraries: {e}")
+        print("Running in demo mode with keyword-based classification")
+
+
+# Load model on startup
+load_model()
 
 
 @app.route('/')
@@ -133,7 +170,6 @@ def predict():
         text = f"{subject} {description}"
         
         if MODEL_LOADED and model is not None:
-            # Use real model
             combined = preprocessor.combine(subject, description)
             inputs = tokenizer(
                 combined,
@@ -143,6 +179,7 @@ def predict():
                 padding='max_length'
             ).to(device)
             
+            import torch
             with torch.no_grad():
                 probs = model.predict_proba(inputs['input_ids'], inputs['attention_mask'])[0]
             
@@ -154,7 +191,6 @@ def predict():
                 for idx in top_3_idx
             ]
         else:
-            # Demo mode
             predictions = demo_predict(text)
         
         requires_review = predictions[0]['confidence'] < 70
@@ -176,7 +212,8 @@ def health():
     return jsonify({
         'status': 'healthy',
         'model_loaded': MODEL_LOADED,
-        'demo_mode': not MODEL_LOADED
+        'demo_mode': not MODEL_LOADED,
+        'hf_repo': HF_REPO_ID
     })
 
 
@@ -190,6 +227,7 @@ if __name__ == '__main__':
     print(f"\n{'='*50}")
     print(f"  TICKET CLASSIFIER AI")
     print(f"  Mode: {'Production' if MODEL_LOADED else 'Demo (keyword-based)'}")
+    print(f"  HF Repo: {HF_REPO_ID}")
     print(f"  URL: http://localhost:{port}")
     print(f"{'='*50}\n")
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=False)
